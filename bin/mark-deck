@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+var argv;
+var yargs = require('yargs');
+var fs = require('fs');
+var MarkDeck = require('../deck');
+var NuFO = require('nufo');
+var asynk = require('async');
+var express = require('express');
+var Readable = require('stream').Readable;
+var exec = require('child_process').exec;
+var port = 8080;
+yargs.usage('Usage: $0 <command> [options] <target>')
+yargs.command('cat', 'show the slides on the command line')
+    .command('serve', 'server the deck locally')
+    .command('show', 'open a browser on the local server')
+    //.command('export', 'convert the deck to another format')
+    .command('s', 'shortcut rollup')
+    .demand(1)
+    .example('$0 cat ~/my-markdown.md ', 'show the deck in the terminal')
+    .example('$0 serve ~/my-markdown.md ', 'show the deck through a web browser')
+    .alias('f', 'format')
+        .nargs('f', 1)
+        .choices('f', [
+            'pdf',
+            'ppt',
+            'nfo',
+            'key'
+        ])
+        .describe('f', 'the output format to render to')
+    .help('h')
+    .alias('h', 'help')
+    .epilog('©2016 - Abbey Hawk Sparrow');
+argv = yargs.argv;
+var deckAction = argv._.shift();
+var target = argv._.pop();
+if(deckAction && !target){
+    target = deckAction;
+    deckAction = 's';
+}
+
+var makeStream = function(str){
+    var s = new Readable();
+    s.push(str);
+    s.push(null);
+    return s;
+}
+
+var targetDeck = function(target, cb){
+    fs.readFile(target, function(err, body){
+        if(err) return cb(err);
+        var deck = new MarkDeck();
+        deck.parse(body.toString(), function(err, pages){
+            return cb(err, pages, function(cb){
+                deck.render({
+                    pages : pages,
+                    format : 'normalize',
+                    type : 'markdown',
+                }, function(err, slides, slidesIndex){
+                    cb(err, slides, slidesIndex)
+                });
+            });
+        });
+    });
+}
+
+var doAction = function(action){
+    switch(action && action.toLowerCase()){
+        case 's':
+            doAction('serve');
+            setTimeout(function(){
+                doAction('show');
+            }, 2000);
+            break;
+        case 'show':
+            exec('open http://localhost:'+port)
+            break;
+        case 'serve':
+            fs.readFile(__dirname + '/../index.html', function(err, body){
+                if(err) throw err;
+                var indexBody = body.toString();
+                targetDeck(target, function(err, pages, render){
+                    var app = express();
+                    render(function(err, slides, slidesIndex){
+                        app.get('/', function(req, res){
+                            res.write(indexBody.replace(
+                                '<!--###[SLIDES]###-->',
+                                slides.join('')
+                            ));
+                            res.end();
+                        });
+                        app.use(express.static(__dirname + '/../node_modules/reveal.js/'));
+                        app.listen(port);
+                    });
+                });
+            });
+            break;
+        case 'cat':
+            targetDeck(target, function(err, pages){
+                if(err) throw err;
+                asynk.eachOfLimit(pages, 1, function(page, index, done){
+                    var document = new NuFO({
+                        body : makeStream(page.markdown),
+                    });
+                    document.transform('NFO', function(err, result){
+                        if(err) throw err;
+                        console.log(result+"\n");
+                        console.log("\n\n"+'================================'+"\n\n");
+                        done();
+                    });
+                }, function(){
+                    console.log('[DONE]');
+                });
+            });
+            break;
+        default : throw new Error('Unknown action:'+action)
+    }
+}
+
+doAction(deckAction);
