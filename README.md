@@ -1,4 +1,4 @@
-mark-deck
+md-deck
 =========
 Simple markdown presentation generation and display, without boilerplate reveal.js or having some weird structural solution with symlinks. Just execute the file from anywhere, standalone.
 
@@ -17,12 +17,12 @@ Something like:
 Installation
 ------------
 
-npm install -g mark-deck
+npm install -g md-deck
 
 Usage
 -----
 
-Simple usage is just `deck <markdown-file>` alternatively `mark-deck`
+Simple usage is just `deck <markdown-file>` alternatively `md-deck`
 
 You can also view a preview of your deck on the commandline with `deck cat <markdown-file>`
 

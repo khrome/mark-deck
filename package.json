@@ -1,12 +1,12 @@
 {
-  "name": "mark-deck",
-  "version": "0.0.1",
+  "name": "md-deck",
+  "version": "0.0.2",
   "devDependencies": {
     "chai": "^4.2.0",
     "mocha": "^7.1.0"
   },
   "bin": {
-    "mark-deck" : "./bin/mark-deck",
+    "md-deck" : "./bin/mark-deck",
     "deck" : "./bin/mark-deck"
   },
   "dependencies": {
