@@ -8,42 +8,6 @@ var asynk = require('async');
 var express = require('express');
 var Readable = require('stream').Readable;
 var exec = require('child_process').exec;
-var port = 8080;
-yargs.usage('Usage: $0 <command> [options] <target>')
-yargs.command('cat', 'show the slides on the command line')
-    .command('serve', 'server the deck locally')
-    .command('show', 'open a browser on the local server')
-    //.command('export', 'convert the deck to another format')
-    .command('s', 'shortcut rollup')
-    .demand(1)
-    .example('$0 cat ~/my-markdown.md ', 'show the deck in the terminal')
-    .example('$0 serve ~/my-markdown.md ', 'show the deck through a web browser')
-    .alias('f', 'format')
-        .nargs('f', 1)
-        .choices('f', [
-            'pdf',
-            'ppt',
-            'nfo',
-            'key'
-        ])
-        .describe('f', 'the output format to render to')
-    .help('h')
-    .alias('h', 'help')
-    .epilog('©2016 - Abbey Hawk Sparrow');
-argv = yargs.argv;
-var deckAction = argv._.shift();
-var target = argv._.pop();
-if(deckAction && !target){
-    target = deckAction;
-    deckAction = 's';
-}
-
-var makeStream = function(str){
-    var s = new Readable();
-    s.push(str);
-    s.push(null);
-    return s;
-}
 
 var targetDeck = function(target, cb){
     fs.readFile(target, function(err, body){
@@ -61,59 +25,123 @@ var targetDeck = function(target, cb){
             });
         });
     });
+};
+
+var makeStream = function(str){
+    var s = new Readable();
+    s.push(str);
+    s.push(null);
+    return s;
 }
 
-var doAction = function(action){
-    switch(action && action.toLowerCase()){
-        case 's':
-            doAction('serve');
-            setTimeout(function(){
-                doAction('show');
-            }, 2000);
-            break;
-        case 'show':
-            exec('open http://localhost:'+port)
-            break;
-        case 'serve':
-            fs.readFile(__dirname + '/../index.html', function(err, body){
-                if(err) throw err;
-                var indexBody = body.toString();
-                targetDeck(target, function(err, pages, render){
-                    var app = express();
-                    render(function(err, slides, slidesIndex){
-                        app.get('/', function(req, res){
-                            res.write(indexBody.replace(
-                                '<!--###[SLIDES]###-->',
-                                slides.join('')
-                            ));
-                            res.end();
+var serve = function(target, cb){
+    fs.readFile(__dirname + '/../index.html', function(err, body){
+        if(err) throw err;
+        var indexBody = body.toString();
+        targetDeck(target, function(err, pages, render){
+            var app = express();
+            render(function(err, slides, slidesIndex){
+                app.get('/', function(req, res){
+                    res.write(indexBody.replace(
+                        '<!--###[SLIDES]###-->',
+                        slides.join('')
+                    ));
+                    res.end();
+                });
+                app.use(express.static(__dirname + '/../node_modules/reveal.js/'));
+                app.listen(port, cb);
+            });
+        });
+    });
+}
+
+var port = 8080;
+
+var CLApp = require('app-term-kit');
+var app = new CLApp('deck', {
+    copyright : 'Abbey Hawk Sparrow',
+    trademark : 'Abbey Hawk Sparrow',
+    copystart : '2014',
+    fslink : ':modules:/local-plugins',
+    defaults : `{
+    // defaults go here.
+    "bitdepth": 2,
+    //request-as-request, fetch-as-request, axios-as-request
+    "requestlib": "request-as-request"
+}`
+});
+app.useable(function(err){
+    app.config(function(err, conf, writeConfig){
+        //if(conf.requestlib) art.use('request', require(conf.requestlib));
+        app.command({
+            name:'cat',
+            description: 'show the slides on the command line',
+            examples: [[
+                '$0 cat my/slides.md ', 'output myslides as inline ascii text'
+            ]],
+            action : function(argv, target, complete){
+                targetDeck(target, function(err, pages){
+                    if(err) throw err;
+                    asynk.eachOfLimit(pages, 1, function(page, index, done){
+                        var document = new NuFO({
+                            body : makeStream(page.markdown),
                         });
-                        app.use(express.static(__dirname + '/../node_modules/reveal.js/'));
-                        app.listen(port);
+                        document.transform('NFO', function(err, result){
+                            if(err) throw err;
+                            console.log(result+"\n");
+                            console.log("\n\n"+'================================'+"\n\n");
+                            done();
+                        });
+                    }, function(){
+                        console.log('[DONE]');
                     });
                 });
-            });
-            break;
-        case 'cat':
-            targetDeck(target, function(err, pages){
-                if(err) throw err;
-                asynk.eachOfLimit(pages, 1, function(page, index, done){
-                    var document = new NuFO({
-                        body : makeStream(page.markdown),
-                    });
-                    document.transform('NFO', function(err, result){
-                        if(err) throw err;
-                        console.log(result+"\n");
-                        console.log("\n\n"+'================================'+"\n\n");
-                        done();
-                    });
-                }, function(){
-                    console.log('[DONE]');
+            }
+        });
+        app.command({
+            name:'serve',
+            description: 'serve the deck locally',
+            examples: [[
+                '$0 serve ~/my-markdown.md ', 'show the deck through a web browser'
+            ]],
+            action : function(argv, target, complete){
+                serve(target, function(){
+                    complete();
                 });
-            });
-            break;
-        default : throw new Error('Unknown action:'+action)
-    }
-}
-
-doAction(deckAction);
+            }
+        });
+        app.command({
+            name:'show',
+            description: 'open a browser on the local server',
+            action : function(argv, target, complete){
+                exec('open http://localhost:'+port);
+                complete();
+            }
+        });
+        app.command({
+            name:'export',
+            description: 'convert the deck to another format',
+            action : function(argv, target, complete){
+                console.log('EXPORT!');
+            }
+        });
+        app.command({
+            name:'s',
+            description: 'serve + open browser',
+            action : function(argv, target, complete){
+                serve(target, function(){
+                    exec('open http://localhost:'+port);
+                });
+            }
+        });
+        app.argument('format', 'string','the output format to render to', 1, [
+            'pdf', 'ppt', 'nfo', 'key'
+        ]);
+        app.help();
+        app.header('deck');
+        app.footer();
+        app.run(function(ex){
+            if(ex) throw ex;
+        })
+    });
+});

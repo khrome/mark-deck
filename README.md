@@ -1,6 +1,9 @@
 md-deck
 =========
-Simple markdown presentation generation and display, without boilerplate reveal.js or having some weird structural solution with symlinks. Just execute the file from anywhere, standalone.
+
+I love reveal.js but having to build HTML each time is bulky and not easily portable.
+
+I wanted something simpler, so I built this, where you have a series of markdown "sections" in a single markdown file, so you can quickly make a presentation that looks good and is functional, and is highly compatible with automated output.
 
 Each slide consists of a separator with a mode(and eventually options)
 followed by a markdown section of slide content.
@@ -22,7 +25,7 @@ npm install -g md-deck
 Usage
 -----
 
-Simple usage is just `deck <markdown-file>` alternatively `md-deck`
+Simple usage is just `deck s <markdown-file>` (alternatively `md-deck`)
 
 You can also view a preview of your deck on the commandline with `deck cat <markdown-file>`
 
