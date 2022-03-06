@@ -3,11 +3,18 @@ var fs = require('fs');
 var MarkDeck = require('../deck.js');
 describe('mark-deck', function(){
     var deckText;
+    var complexTest;
     before(function(done){
         fs.readFile(__dirname+'/test.md', function(err, text){
+            should.not.exist(err);
             deckText = text.toString();
             should.exist(deckText);
-            done();
+            fs.readFile(__dirname+'/code_and_modes_test.md', function(err2, text){
+                should.not.exist(err2);
+                complexTest = text.toString();
+                should.exist(deckText);
+                done();
+            });
         });
     });
 
@@ -68,4 +75,26 @@ describe('mark-deck', function(){
             });
         });
     });
+
+    it('renders cards with type + code + images', function(done){
+        var deck = new MarkDeck();
+        should.exist(deckText);
+        (typeof deckText).should.equal('string');
+        deck.parse(complexTest, function(err, pages){
+            deck.render({
+                pages : pages,
+                format : 'normalize',
+                type : 'markdown',
+            }, function(err, slides, slidesIndex){
+                slides.forEach(function(slide){
+                    slide.should.contain('<section data-markdown>');
+                    slide.should.contain('</section>');
+                    slide.should.contain('<textarea data-template>');
+                    slide.should.contain('</textarea>');
+                });
+                done();
+            });
+        });
+    });
+
 });

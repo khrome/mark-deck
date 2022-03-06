@@ -1,5 +1,6 @@
 var transform = require('../node.js');
 var asynk = require('async');
+var hljs = require('highlight.js');
 
 var clone = function(o){return JSON.parse(JSON.stringify(o))};
 
@@ -23,6 +24,39 @@ var trx = transform.extend({
         var output = state.indent+'#'.repeat(options.level)+' '+text+"\n";
         callback(undefined, output);
     },
+    img : function(args, state, callback){
+        if(args[0] && args[0].href){
+            var output = `<img alt="${args[0].alt}" src="${args[0].href}" />`;
+        }
+        callback(undefined, output);
+    },
+    link : function(args, state, callback){
+        var output = '';
+        if(args[0] && args[0].href){
+            var output = `<a target="_blank" href="${args[0].href}">${args[1]}</a>`;
+        }
+        callback(undefined, output);
+    },
+    para : function(args, state, callback){
+        let output = '';
+        if(args[0] && args[0][0] === 'inlinecode'){
+            let text = args[0][1];
+            let target = text.indexOf("\n");
+            let type = text.substring(0, target).trim();
+
+            let body = text.substring(target+1);
+            if(type){ //highliht syntax
+                output = `<section><pre><br/>
+    ${hljs.highlight(body, {language: type}).value}
+ </pre></section>`
+            }else{ //no highlight
+                output = `<section><pre><code data-trim data-noescape>
+    ${body}
+ </code></pre></section>`
+            }
+        }
+        callback(undefined, output);
+    },
     bulletlist : function(args, state, callback){
         state.listLevel++;
         state.indent = '    '.repeat(state.listLevel);
@@ -41,6 +75,13 @@ var trx = transform.extend({
         });
     },
     listitem : function(args, state, callback){
+        if(Array.isArray(args[0])){
+            this.transformNode(undefined, args[0], clone(state), function(err, transformed){
+                if(err) return callback(err);
+                callback(undefined, transformed);
+            });
+            return;
+        }
         var text = args[0];
         var sublist = args[1];
         var decorator = (state.decorator?state.decorator():'•');

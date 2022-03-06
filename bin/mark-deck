@@ -101,9 +101,9 @@ app.useable(function(err){
         app.command({
             name:'serve',
             description: 'serve the deck locally',
-            examples: [[
-                '$0 serve ~/my-markdown.md ', 'show the deck through a web browser'
-            ]],
+            examples: [
+                ['$0 serve ~/my-markdown.md ', 'show the deck through a web browser']
+            ],
             action : function(argv, target, complete){
                 serve(target, function(){
                     complete();
@@ -113,6 +113,7 @@ app.useable(function(err){
         app.command({
             name:'show',
             description: 'open a browser on the local server',
+            examples: [],
             action : function(argv, target, complete){
                 exec('open http://localhost:'+port);
                 complete();
@@ -121,6 +122,7 @@ app.useable(function(err){
         app.command({
             name:'export',
             description: 'convert the deck to another format',
+            examples: [],
             action : function(argv, target, complete){
                 console.log('EXPORT!');
             }
@@ -128,6 +130,7 @@ app.useable(function(err){
         app.command({
             name:'s',
             description: 'serve + open browser',
+            examples: [],
             action : function(argv, target, complete){
                 serve(target, function(){
                     exec('open http://localhost:'+port);
