@@ -12,7 +12,7 @@
   "dependencies": {
     "app-term-kit": "^0.2.0",
     "async": "^3.2.0",
-    "express": "^4.16.2",
+    "express": "^4.17.3",
     "extend-interface": "0.0.2",
     "highlight.js": "^11.4.0",
     "markdown": "^0.5.0",
